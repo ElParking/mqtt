@@ -1,6 +1,6 @@
 {
-    "name": "sskaje/mqtt",
-    "description": "sskaje's MQTT Class",
+    "name": "ElParking/mqtt",
+    "description": "sskaje's MQTT Class Fork",
     "license": "MIT",
     "authors": [
         {
