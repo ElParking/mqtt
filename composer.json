@@ -1,5 +1,5 @@
 {
-    "name": "ElParking/mqtt",
+    "name": "elparking/mqtt",
     "description": "sskaje's MQTT Class Fork",
     "license": "MIT",
     "authors": [
@@ -9,16 +9,9 @@
             "homepage": "https://sskaje.me"
         }
     ],
-    "repositories": [  
-        {  
-            "type": "vcs",  
-            "url": "https://github.com/ElParking/mqtt"  
-        }  
-    ], 
     "minimum-stability": "dev",
     "require": {
-        "php": ">=5.3.0",
-        "ElParking/mqtt": "dev-master"
+        "php": ">=5.3.0"
     },
     "autoload": {
         "psr-4": {"sskaje\\mqtt\\": "mqtt"}
