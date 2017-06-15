@@ -9,9 +9,16 @@
             "homepage": "https://sskaje.me"
         }
     ],
+    "repositories": [  
+        {  
+            "type": "vcs",  
+            "url": "https://github.com/ElParking/mqtt"  
+        }  
+    ], 
     "minimum-stability": "dev",
     "require": {
-        "php": ">=5.3.0"
+        "php": ">=5.3.0",
+        "ElParking/mqtt": "dev-master"
     },
     "autoload": {
         "psr-4": {"sskaje\\mqtt\\": "mqtt"}
