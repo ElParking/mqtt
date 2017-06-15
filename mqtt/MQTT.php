@@ -37,7 +37,9 @@
  */
 
 namespace sskaje\mqtt;
+
 use sskaje\mqtt\Message\Base;
+use sskaje\mqtt\Message\PUBLISH;
 use sskaje\mqtt\Message\Will;
 
 /**
@@ -96,11 +98,21 @@ class MQTT
     protected $connect_will;
 
     /**
+     * @var int timestamp
+     */
+    protected $start_loop_time;
+
+    /**
+     * @var PUBLISH message getted by handler
+     */
+    public $publish_message;
+
+    /**
      * Version Code
      */
-    const VERSION_3     = 3;
-    const VERSION_3_0   = 3;
-    const VERSION_3_1   = 3;
+    const VERSION_3 = 3;
+    const VERSION_3_0 = 3;
+    const VERSION_3_1 = 3;
     const VERSION_3_1_1 = 4;
     /**
      * Current version
@@ -144,7 +156,7 @@ class MQTT
      * @param null|string $clientid
      * @throws Exception
      */
-    public function __construct($address, $clientid=null)
+    public function __construct($address, $clientid = null)
     {
         # Create Socket Client Object
         $this->socket = new SocketClient($address);
@@ -165,7 +177,7 @@ class MQTT
     public function setRetryTimeout($retry_timeout)
     {
         if ($retry_timeout > 1) {
-            $this->retry_timeout = (int) $retry_timeout;
+            $this->retry_timeout = (int)$retry_timeout;
         }
     }
 
@@ -212,7 +224,7 @@ class MQTT
      * @param string $username
      * @param string $password
      */
-    public function setAuth($username=null, $password=null)
+    public function setAuth($username = null, $password = null)
     {
         $this->username = $username;
         $this->password = $password;
@@ -225,7 +237,7 @@ class MQTT
      */
     public function setKeepalive($keepalive)
     {
-        $this->keepalive = (int) $keepalive;
+        $this->keepalive = (int)$keepalive;
     }
 
     /**
@@ -243,10 +255,10 @@ class MQTT
      *
      * @param string $topic
      * @param string $message
-     * @param int    $qos           0,1,2
-     * @param int    $retain        bool
+     * @param int $qos 0,1,2
+     * @param int $retain bool
      */
-    public function setWill($topic, $message, $qos=0, $retain=0)
+    public function setWill($topic, $message, $qos = 0, $retain = 0)
     {
         $this->connect_will = new Will($topic, $message, $qos, $retain);
     }
@@ -276,10 +288,10 @@ class MQTT
      * Invoke Functions in Message Handler
      *
      * @param string $name
-     * @param array  $params
+     * @param array $params
      * @return bool
      */
-    protected function call_handler($name, array $params=array())
+    protected function call_handler($name, array $params = array())
     {
         if ($this->handler === null) {
             return false;
@@ -311,7 +323,7 @@ class MQTT
 
     /**
      * Connect to broker
-     s*
+     *
      * @return Message\CONNACK
      * @throws Exception
      */
@@ -352,7 +364,7 @@ class MQTT
 
         # default client id
         if (empty($this->clientid)) {
-            $this->clientid = 'mqtt'.substr(md5(uniqid('mqtt', true)), 8, 16);
+            $this->clientid = 'mqtt' . substr(md5(uniqid('mqtt', true)), 8, 16);
         }
         Debug::Log(Debug::DEBUG, 'connect(): clientid=' . $this->clientid);
 
@@ -420,7 +432,7 @@ class MQTT
      * @param bool $close_current close current existed connection
      * @return Message\CONNACK
      */
-    public function reconnect($close_current=true)
+    public function reconnect($close_current = true)
     {
         Debug::Log(Debug::INFO, 'reconnect()');
         if ($close_current) {
@@ -445,15 +457,15 @@ class MQTT
     /**
      * Publish Message to topic synchronized
      *
-     * @param string   $topic
-     * @param string   $message
-     * @param int      $qos
-     * @param int      $retain
-     * @param int    & $msgid
+     * @param string $topic
+     * @param string $message
+     * @param int $qos
+     * @param int $retain
+     * @param int & $msgid
      * @return array|bool
      * @throws Exception
      */
-    public function publish_sync($topic, $message, $qos=0, $retain=0, &$msgid=0)
+    public function publish_sync($topic, $message, $qos = 0, $retain = 0, &$msgid = 0)
     {
         # set default call_handler
 
@@ -503,12 +515,12 @@ class MQTT
      *
      * @param string $topic
      * @param string $message
-     * @param int    $qos
-     * @param int    $retain
+     * @param int $qos
+     * @param int $retain
      * @return array|bool
      * @throws Exception
      */
-    public function publish_async($topic, $message, $qos=0, $retain=0, &$msgid=null)
+    public function publish_async($topic, $message, $qos = 0, $retain = 0, &$msgid = null)
     {
         # non blocking
         $this->socket->set_non_blocking();
@@ -525,15 +537,15 @@ class MQTT
     /**
      * Publish Message to topic
      *
-     * @param string     $topic
-     * @param string     $message
-     * @param int        $qos      Optional, QoS, Default to 0
-     * @param int        $retain   Optional, RETAIN, Default to 0
-     * @param int|null & $msgid    Optional, Packet Identifier
-     * @param int        $dup      Optional, Default to 0
+     * @param string $topic
+     * @param string $message
+     * @param int $qos Optional, QoS, Default to 0
+     * @param int $retain Optional, RETAIN, Default to 0
+     * @param int|null & $msgid Optional, Packet Identifier
+     * @param int $dup Optional, Default to 0
      * @return array|bool
      */
-    protected function do_publish($topic, $message, $qos=0, $retain=0, & $msgid=0, $dup=0)
+    protected function do_publish($topic, $message, $qos = 0, $retain = 0, & $msgid = 0, $dup = 0)
     {
         /**
          * @var PacketIdentifier[] $pis
@@ -575,40 +587,42 @@ class MQTT
                     Message::PUBACK,
                     $msgid,
                     array(
-                        'msgid' =>  $msgid,
-                        'retry' =>  array(
-                            'retain'       => $retain,
-                            'topic'        => $topic,
-                            'message'      => $message,
+                        'msgid' => $msgid,
+                        'retry' => array(
+                            'retain' => $retain,
+                            'topic' => $topic,
+                            'message' => $message,
                         ),
                         'retry_after' => time() + $this->retry_timeout,
                     )
                 );
             }
-        } else if ($qos == 2) {
-            # QoS = 2, PUBLISH + PUBREC + PUBREL + PUBCOMP
-            if (!$dup) {
-                $this->cmdstore->addWait(
-                    Message::PUBREC,
-                    $msgid,
-                    array(
-                        'msgid' =>  $msgid,
-                        'retry' =>  array(
-                            'retain'       => $retain,
-                            'topic'        => $topic,
-                            'message'      => $message,
-                        ),
-                        'retry_after' => time() + $this->retry_timeout,
-                    )
-                );
+        } else {
+            if ($qos == 2) {
+                # QoS = 2, PUBLISH + PUBREC + PUBREL + PUBCOMP
+                if (!$dup) {
+                    $this->cmdstore->addWait(
+                        Message::PUBREC,
+                        $msgid,
+                        array(
+                            'msgid' => $msgid,
+                            'retry' => array(
+                                'retain' => $retain,
+                                'topic' => $topic,
+                                'message' => $message,
+                            ),
+                            'retry_after' => time() + $this->retry_timeout,
+                        )
+                    );
+                }
             }
         }
 
         return array(
-            'qos'     => $qos,
-            'ret'     => $publish_bytes_written != false,
+            'qos' => $qos,
+            'ret' => $publish_bytes_written != false,
             'publish' => $publish_bytes_written,
-            'msgid'   => $msgid,
+            'msgid' => $msgid,
         );
     }
 
@@ -641,7 +655,7 @@ class MQTT
      */
     public function subscribe(array $topics)
     {
-        foreach ($topics as $topic_filter=>$topic_qos) {
+        foreach ($topics as $topic_filter => $topic_qos) {
             $this->topics_to_subscribe[$topic_filter] = $topic_qos;
         }
         return true;
@@ -650,7 +664,7 @@ class MQTT
     /**
      * UNSUBSCRIBE
      *
-     * @param array $topics   Topic Filters
+     * @param array $topics Topic Filters
      * @return bool
      * @throws Exception
      */
@@ -691,7 +705,7 @@ class MQTT
         $subscribeobj->setMsgID($msgid);
 
         $all_topic_qos = array();
-        foreach ($this->topics_to_subscribe as $topic_filter=>$topic_qos) {
+        foreach ($this->topics_to_subscribe as $topic_filter => $topic_qos) {
             $subscribeobj->addTopic(
                 $topic_filter,
                 $topic_qos
@@ -740,7 +754,7 @@ class MQTT
 
         $unsubscribe_topics = array();
         # no need to check if topic is subscribed before unsubscribing
-        foreach ($this->topics_to_unsubscribe as $tn=>$topic_filter) {
+        foreach ($this->topics_to_unsubscribe as $tn => $topic_filter) {
             $unsubscribeobj->addTopic($topic_filter);
             unset($this->topics_to_unsubscribe[$tn]);
             $unsubscribe_topics[] = $topic_filter;
@@ -775,11 +789,13 @@ class MQTT
         if ($selected === false) {
             # Error
             throw new Exception\NetworkError('Connection lost???');
-        } else if ($selected) {
-            return $this->handle_incoming();
         } else {
-            # no incoming packet
-            return 0;
+            if ($selected) {
+                return $this->handle_incoming();
+            } else {
+                # no incoming packet
+                return 0;
+            }
         }
     }
 
@@ -796,209 +812,213 @@ class MQTT
         }
 
         switch ($message_object->getMessageType()) {
-        case Message::PINGRESP:
-            array_shift($this->ping_queue);
-            Debug::Log(Debug::INFO, 'loop(): received PINGRESP');
+            case Message::PINGRESP:
+                array_shift($this->ping_queue);
+                Debug::Log(Debug::INFO, 'loop(): received PINGRESP');
 
-            $this->last_ping_time = time();
+                $this->last_ping_time = time();
 
-            $this->call_handler('pingresp', array($this, $message_object));
+                $this->call_handler('pingresp', array($this, $message_object));
 
-            break;
+                break;
 
             # Process PUBLISH
             # in: Client <- Server, Step 1
-        case Message::PUBLISH:
-            /**
-             * @var Message\PUBLISH $message_object
-             */
+            case Message::PUBLISH:
+                /**
+                 * @var Message\PUBLISH $message_object
+                 */
 
-            Debug::Log(Debug::INFO, 'loop(): received PUBLISH');
+                Debug::Log(Debug::INFO, 'loop(): received PUBLISH');
 
-            $qos    = $message_object->getQoS();
+                $qos = $message_object->getQoS();
 
-            $msgid = $message_object->getMsgID();
+                $msgid = $message_object->getMsgID();
 
-            if ($qos == 0) {
-                Debug::Log(Debug::DEBUG, 'loop(): PUBLISH QoS=0 PASS');
-                # Do nothing
-            } else if ($qos == 1) {
-                # PUBACK
-                $puback_bytes_written = $this->simpleCommand(Message::PUBACK, $msgid);
-                Debug::Log(Debug::DEBUG, 'loop(): PUBLISH QoS=1 PUBACK written=' . $puback_bytes_written);
+                if ($qos == 0) {
+                    Debug::Log(Debug::DEBUG, 'loop(): PUBLISH QoS=0 PASS');
+                    # Do nothing
+                } else {
+                    if ($qos == 1) {
+                        # PUBACK
+                        $puback_bytes_written = $this->simpleCommand(Message::PUBACK, $msgid);
+                        Debug::Log(Debug::DEBUG, 'loop(): PUBLISH QoS=1 PUBACK written=' . $puback_bytes_written);
 
-            } else if ($qos == 2) {
+                    } else {
+                        if ($qos == 2) {
 
-                # PUBREC
-                $pubrec_bytes_written = $this->simpleCommand(Message::PUBREC, $msgid);
-                Debug::Log(Debug::DEBUG, 'loop(): PUBLISH QoS=2 PUBREC written=' . $pubrec_bytes_written);
+                            # PUBREC
+                            $pubrec_bytes_written = $this->simpleCommand(Message::PUBREC, $msgid);
+                            Debug::Log(Debug::DEBUG, 'loop(): PUBLISH QoS=2 PUBREC written=' . $pubrec_bytes_written);
+
+                            $this->cmdstore->addWait(
+                                Message::PUBREL,
+                                $msgid,
+                                array(
+                                    'msgid' => $msgid,
+                                    'retry_after' => time() + $this->retry_timeout,
+                                )
+                            );
+
+                        } else {
+                            # wrong packet
+                            Debug::Log(Debug::WARN, 'loop(): PUBLISH Invalid QoS');
+                        }
+                    }
+                }
+
+                # call handler
+                $this->call_handler('publish', array($this, $message_object));
+
+                break;
+
+            # Process PUBACK
+            # in: Client -> Server, QoS = 1, Step 2
+            case Message::PUBACK:
+
+                /**
+                 * @var Message\PUBACK $message_object
+                 */
+
+                # Message has been published (QoS 1)
+
+                $msgid = $message_object->getMsgID();
+                Debug::Log(Debug::INFO, 'loop(): received PUBACK msgid=' . $msgid);
+                # Verify Packet Identifier
+                $this->call_handler('puback', array($this, $message_object));
+
+                $this->cmdstore->delWait(Message::PUBACK, $msgid);
+                break;
+
+            # Process PUBREC, send PUBREL
+            # in: Client -> Server, QoS = 2, Step 2
+            case Message::PUBREC:
+                /**
+                 * @var Message\PUBREC $message_object
+                 */
+
+                $msgid = $message_object->getMsgID();
+                Debug::Log(Debug::INFO, 'loop(): received PUBREC msgid=' . $msgid);
+
+                $this->cmdstore->delWait(Message::PUBREC, $msgid);
+
+                # PUBREL
+                Debug::Log(Debug::INFO, 'loop(): send PUBREL msgid=' . $msgid);
+                $pubrel_bytes_written = $this->simpleCommand(Message::PUBREL, $msgid);
+
 
                 $this->cmdstore->addWait(
-                    Message::PUBREL,
+                    Message::PUBCOMP,
                     $msgid,
                     array(
-                        'msgid'       => $msgid,
+                        'msgid' => $msgid,
                         'retry_after' => time() + $this->retry_timeout,
                     )
                 );
 
-            } else {
-                # wrong packet
-                Debug::Log(Debug::WARN, 'loop(): PUBLISH Invalid QoS');
-            }
+                Debug::Log(Debug::DEBUG, 'loop(): PUBREL QoS=2 PUBREL written=' . $pubrel_bytes_written);
 
-            # call handler
-            $this->call_handler('publish', array($this, $message_object));
-
-            break;
-
-            # Process PUBACK
-            # in: Client -> Server, QoS = 1, Step 2
-        case Message::PUBACK:
-
-            /**
-             * @var Message\PUBACK $message_object
-             */
-
-            # Message has been published (QoS 1)
-
-            $msgid = $message_object->getMsgID();
-            Debug::Log(Debug::INFO, 'loop(): received PUBACK msgid=' . $msgid);
-            # Verify Packet Identifier
-            $this->call_handler('puback', array($this, $message_object));
-
-            $this->cmdstore->delWait(Message::PUBACK, $msgid);
-            break;
-
-            # Process PUBREC, send PUBREL
-            # in: Client -> Server, QoS = 2, Step 2
-        case Message::PUBREC:
-            /**
-             * @var Message\PUBREC $message_object
-             */
-
-            $msgid = $message_object->getMsgID();
-            Debug::Log(Debug::INFO, 'loop(): received PUBREC msgid=' . $msgid);
-
-            $this->cmdstore->delWait(Message::PUBREC, $msgid);
-
-            # PUBREL
-            Debug::Log(Debug::INFO, 'loop(): send PUBREL msgid=' . $msgid);
-            $pubrel_bytes_written = $this->simpleCommand(Message::PUBREL, $msgid);
-
-
-            $this->cmdstore->addWait(
-                Message::PUBCOMP,
-                $msgid,
-                array(
-                    'msgid'       => $msgid,
-                    'retry_after' => time() + $this->retry_timeout,
-                )
-            );
-
-            Debug::Log(Debug::DEBUG, 'loop(): PUBREL QoS=2 PUBREL written=' . $pubrel_bytes_written);
-
-            $this->call_handler('pubrec', array($this, $message_object));
-            break;
+                $this->call_handler('pubrec', array($this, $message_object));
+                break;
 
 
             # Process PUBREL
             # in: Client <- Server, QoS = 2, Step 3
-        case Message::PUBREL:
-            /**
-             * @var Message\PUBREL $message_object
-             */
+            case Message::PUBREL:
+                /**
+                 * @var Message\PUBREL $message_object
+                 */
 
-            $msgid = $message_object->getMsgID();
-            Debug::Log(Debug::INFO, 'loop(): received PUBREL msgid=' . $msgid);
+                $msgid = $message_object->getMsgID();
+                Debug::Log(Debug::INFO, 'loop(): received PUBREL msgid=' . $msgid);
 
-            $this->cmdstore->delWait(Message::PUBREL, $msgid);
+                $this->cmdstore->delWait(Message::PUBREL, $msgid);
 
-            # PUBCOMP
-            Debug::Log(Debug::INFO, 'loop(): send PUBCOMP msgid=' . $msgid);
-            $pubcomp_bytes_written = $this->simpleCommand(Message::PUBCOMP, $msgid);
+                # PUBCOMP
+                Debug::Log(Debug::INFO, 'loop(): send PUBCOMP msgid=' . $msgid);
+                $pubcomp_bytes_written = $this->simpleCommand(Message::PUBCOMP, $msgid);
 
-            Debug::Log(Debug::DEBUG, 'loop(): PUBREL QoS=2 PUBCOMP written=' . $pubcomp_bytes_written);
+                Debug::Log(Debug::DEBUG, 'loop(): PUBREL QoS=2 PUBCOMP written=' . $pubcomp_bytes_written);
 
-            $this->call_handler('pubrel', array($this, $message_object));
-            break;
+                $this->call_handler('pubrel', array($this, $message_object));
+                break;
 
             # Process PUBCOMP
             # in: Client -> Server, QoS = 2, Step 4
-        case Message::PUBCOMP:
+            case Message::PUBCOMP:
 
-            # Message has been published (QoS 2)
+                # Message has been published (QoS 2)
 
-            /**
-             * @var Message\PUBCOMP $message_object
-             */
+                /**
+                 * @var Message\PUBCOMP $message_object
+                 */
 
-            $msgid = $message_object->getMsgID();
-            Debug::Log(Debug::INFO, 'loop(): received PUBCOMP msgid=' . $msgid);
+                $msgid = $message_object->getMsgID();
+                Debug::Log(Debug::INFO, 'loop(): received PUBCOMP msgid=' . $msgid);
 
-            $this->cmdstore->delWait(Message::PUBCOMP, $msgid);
+                $this->cmdstore->delWait(Message::PUBCOMP, $msgid);
 
-            $this->call_handler('pubcomp', array($this, $message_object));
-            break;
+                $this->call_handler('pubcomp', array($this, $message_object));
+                break;
 
             # Process SUBACK
-        case Message::SUBACK:
+            case Message::SUBACK:
 
-            /**
-             * @var Message\SUBACK $message_object
-             */
+                /**
+                 * @var Message\SUBACK $message_object
+                 */
 
-            $return_codes = $message_object->getReturnCodes();
-            $msgid = $message_object->getMsgID();
-            Debug::Log(Debug::INFO, 'loop(): received SUBACK msgid=' . $msgid);
+                $return_codes = $message_object->getReturnCodes();
+                $msgid = $message_object->getMsgID();
+                Debug::Log(Debug::INFO, 'loop(): received SUBACK msgid=' . $msgid);
 
-            if (!isset($this->subscribe_awaits[$msgid])) {
-                Debug::Log(Debug::WARN, 'loop(): SUBACK Message identifier not found: ' . $msgid);
-            } else {
-                if (count($this->subscribe_awaits[$msgid]) != count($return_codes)) {
-                    Debug::Log(Debug::WARN, 'loop(): SUBACK returned qos list doesn\'t match SUBSCRIBE');
+                if (!isset($this->subscribe_awaits[$msgid])) {
+                    Debug::Log(Debug::WARN, 'loop(): SUBACK Message identifier not found: ' . $msgid);
                 } else {
-                    # save max_qos list from suback
-                    foreach ($return_codes as $k=>$tqos) {
-                        if ($return_codes != 0x80) {
-                            $this->topics[$this->subscribe_awaits[$msgid][$k][0]] = $tqos;
-                        } else {
-                            Debug::Log(
-                                Debug::WARN,
-                                "loop(): Failed to subscribe '{$this->subscribe_awaits[$msgid][$k][0]}'. Request QoS={$this->subscribe_awaits[$msgid][$k][1]}"
-                            );
+                    if (count($this->subscribe_awaits[$msgid]) != count($return_codes)) {
+                        Debug::Log(Debug::WARN, 'loop(): SUBACK returned qos list doesn\'t match SUBSCRIBE');
+                    } else {
+                        # save max_qos list from suback
+                        foreach ($return_codes as $k => $tqos) {
+                            if ($return_codes != 0x80) {
+                                $this->topics[$this->subscribe_awaits[$msgid][$k][0]] = $tqos;
+                            } else {
+                                Debug::Log(
+                                    Debug::WARN,
+                                    "loop(): Failed to subscribe '{$this->subscribe_awaits[$msgid][$k][0]}'. Request QoS={$this->subscribe_awaits[$msgid][$k][1]}"
+                                );
+                            }
                         }
                     }
                 }
-            }
 
-            $this->call_handler('suback', array($this, $message_object));
+                $this->call_handler('suback', array($this, $message_object));
 
-            break;
+                break;
 
             # Process UNSUBACK
-        case Message::UNSUBACK:
-            /**
-             * @var Message\UNSUBACK $message_object
-             */
+            case Message::UNSUBACK:
+                /**
+                 * @var Message\UNSUBACK $message_object
+                 */
 
-            $msgid = $message_object->getMsgID();
-            Debug::Log(Debug::INFO, 'loop(): received UNSUBACK msgid=' . $msgid);
+                $msgid = $message_object->getMsgID();
+                Debug::Log(Debug::INFO, 'loop(): received UNSUBACK msgid=' . $msgid);
 
-            if (!isset($this->unsubscribe_awaits[$msgid])) {
-                Debug::Log(Debug::WARN, 'loop(): UNSUBACK Message identifier not found ' . $msgid);
-            } else {
-                foreach ($this->unsubscribe_awaits[$msgid] as $topic) {
-                    Debug::Log(Debug::WARN, "loop(): Unsubscribe topic='{$topic}'");
-                    unset($this->topics[$topic]);
+                if (!isset($this->unsubscribe_awaits[$msgid])) {
+                    Debug::Log(Debug::WARN, 'loop(): UNSUBACK Message identifier not found ' . $msgid);
+                } else {
+                    foreach ($this->unsubscribe_awaits[$msgid] as $topic) {
+                        Debug::Log(Debug::WARN, "loop(): Unsubscribe topic='{$topic}'");
+                        unset($this->topics[$topic]);
+                    }
                 }
-            }
 
-            $this->call_handler('unsuback', array($this, $message_object));
-            break;
+                $this->call_handler('unsuback', array($this, $message_object));
+                break;
 
-        default:
-            return false;
+            default:
+                return false;
         }
 
         return true;
@@ -1009,7 +1029,7 @@ class MQTT
      *
      * @param int $msgid
      */
-    protected function handle_publish($msgid=0)
+    protected function handle_publish($msgid = 0)
     {
         if ($msgid) {
             $time = time();
@@ -1026,7 +1046,7 @@ class MQTT
                     $this->do_publish(
                         $rt['topic'],
                         $rt['message'],
-                        $qos=1,
+                        $qos = 1,
                         $rt['retain'],
                         $msgid,
                         1
@@ -1090,7 +1110,7 @@ class MQTT
                 if (!$this->cmdstore->isEmpty($s)) {
                     $waits = $this->cmdstore->getWaits($s);
 
-                    foreach ($waits as $msgid=>$detail) {
+                    foreach ($waits as $msgid => $detail) {
                         $this->handle_publish($msgid);
                     }
                 }
@@ -1146,6 +1166,54 @@ class MQTT
         return true;
     }
 
+    public function waitForPublishMessage($seconds = 10)
+    {
+        if (is_null($this->start_loop_time)) {
+            $this->start_loop_time = time();
+        }
+
+        while ((time() - $this->start_loop_time) < $seconds) {
+            if (!is_null($this->publish_message)) {
+                return $this->publish_message;
+            }
+
+            # check if any commands awaits or topics to subscribe
+            if (!$this->cmdstore->countWaits() && empty($this->topics) && empty($this->topics_to_subscribe)) {
+                Debug::Log(Debug::INFO, "loop(): No tasks, leaving...");
+                break;
+            }
+
+            # Subscribe topics
+            if (!empty($this->topics_to_subscribe)) {
+                list($last_subscribe_msgid, $last_subscribe_topics) = $this->do_subscribe();
+                $this->subscribe_awaits[$last_subscribe_msgid] = $last_subscribe_topics;
+            }
+            # Unsubscribe topics
+            if (!empty($this->topics_to_unsubscribe)) {
+                list($last_unsubscribe_msgid, $last_unsubscribe_topics) = $this->do_unsubscribe();
+                $this->unsubscribe_awaits[$last_unsubscribe_msgid] = $last_unsubscribe_topics;
+            }
+
+            try {
+                # It is the responsibility of the Client to ensure that the interval between Control Packets
+                # being sent does not exceed the Keep Alive value. In the absence of sending any other Control
+                # Packets, the Client MUST send a PINGREQ Packet [MQTT-3.1.2-23].
+                $this->keepalive();
+
+                $this->handle_message();
+
+            } catch (Exception\NetworkError $e) {
+                Debug::Log(Debug::INFO, 'loop(): Connection lost.');
+                $this->reconnect();
+                $this->subscribe($this->topics);
+            } catch (\Exception $e) {
+                throw $e;
+            }
+        }
+
+        return null;
+    }
+
     protected $last_ping_time = 0;
 
     /**
@@ -1172,7 +1240,8 @@ class MQTT
         }
 
         if ($current_time - $this->last_ping_time >= $this->keepalive / 2) {
-            Debug::Log(Debug::DEBUG, "keepalive(): current_time={$current_time}, last_ping_time={$this->last_ping_time}, keepalive={$this->keepalive}");
+            Debug::Log(Debug::DEBUG,
+                "keepalive(): current_time={$current_time}, last_ping_time={$this->last_ping_time}, keepalive={$this->keepalive}");
             $this->ping();
         }
 
@@ -1209,7 +1278,7 @@ class MQTT
      * @param int $msgid
      * @return int           bytes written
      */
-    protected function simpleCommand($type, $msgid=0)
+    protected function simpleCommand($type, $msgid = 0)
     {
         $msgobj = $this->getMessageObject($type);
 
@@ -1223,14 +1292,14 @@ class MQTT
     /**
      * Write Message Object
      *
-     * @param Message\Base   $object
-     * @param int          & $length
+     * @param Message\Base $object
+     * @param int & $length
      * @return int
      * @throws Exception
      */
-    protected function message_write(Base $object, & $length=0)
+    protected function message_write(Base $object, & $length = 0)
     {
-        Debug::Log(Debug::DEBUG, 'Message write: message_type='.Message::$name[$object->getMessageType()]);
+        Debug::Log(Debug::DEBUG, 'Message write: message_type=' . Message::$name[$object->getMessageType()]);
         $length = 0;
         $message = $object->build($length);
         $bytes_written = $this->socket->write($message, $length);
@@ -1260,7 +1329,7 @@ class MQTT
     protected function message_read()
     {
         if ($this->socket->eof()) {
-            if (++ $this->count_eof > 5) {
+            if (++$this->count_eof > 5) {
                 usleep(pow(2, $this->count_eof));
             }
 
@@ -1289,9 +1358,9 @@ class MQTT
         $cmd = Utility::ParseCommand(ord($read_message[0]));
 
         $message_type = $cmd['message_type'];
-        $flags        = $cmd['flags'];
+        $flags = $cmd['flags'];
 
-        Debug::Log(Debug::DEBUG, "message_read(): message_type=".Message::$name[$message_type].", flags={$flags}");
+        Debug::Log(Debug::DEBUG, "message_read(): message_type=" . Message::$name[$message_type] . ", flags={$flags}");
 
         if (ord($read_message[1]) > 0x7f) {
             # read 3 more bytes
@@ -1307,7 +1376,8 @@ class MQTT
             $to_read = $remaining_length - ($read_bytes - $pos);
         }
 
-        Debug::Log(Debug::DEBUG, 'message_read(): remaining length=' . $remaining_length . ', data to read='.$to_read);
+        Debug::Log(Debug::DEBUG,
+            'message_read(): remaining length=' . $remaining_length . ', data to read=' . $to_read);
         if ($to_read) {
             $read_message .= $this->socket->read($to_read);
         }
