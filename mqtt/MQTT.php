@@ -98,11 +98,6 @@ class MQTT
     protected $connect_will;
 
     /**
-     * @var int timestamp
-     */
-    protected $start_loop_time;
-
-    /**
      * @var PUBLISH message getted by handler
      */
     public $publish_message;
@@ -1166,52 +1161,35 @@ class MQTT
         return true;
     }
 
-    public function waitForPublishMessage($seconds = 10)
+    /**
+     * Waits for a message only the time selected in keepalive/2
+     * @return null|PUBLISH
+     * @throws Exception
+     * @throws \Exception
+     */
+    public function waitForPublishMessage()
     {
-        if (is_null($this->start_loop_time)) {
-            $this->start_loop_time = time();
+        # check if any commands awaits or topics to subscribe
+        if (!$this->cmdstore->countWaits() && empty($this->topics) && empty($this->topics_to_subscribe)) {
+            Debug::Log(Debug::INFO, "loop(): No tasks, leaving...");
+            return null;
         }
 
-        while ((time() - $this->start_loop_time) < $seconds) {
-            if (!is_null($this->publish_message)) {
-                return $this->publish_message;
-            }
-
-            # check if any commands awaits or topics to subscribe
-            if (!$this->cmdstore->countWaits() && empty($this->topics) && empty($this->topics_to_subscribe)) {
-                Debug::Log(Debug::INFO, "loop(): No tasks, leaving...");
-                break;
-            }
-
-            # Subscribe topics
-            if (!empty($this->topics_to_subscribe)) {
-                list($last_subscribe_msgid, $last_subscribe_topics) = $this->do_subscribe();
-                $this->subscribe_awaits[$last_subscribe_msgid] = $last_subscribe_topics;
-            }
-            # Unsubscribe topics
-            if (!empty($this->topics_to_unsubscribe)) {
-                list($last_unsubscribe_msgid, $last_unsubscribe_topics) = $this->do_unsubscribe();
-                $this->unsubscribe_awaits[$last_unsubscribe_msgid] = $last_unsubscribe_topics;
-            }
-
-            try {
-                # It is the responsibility of the Client to ensure that the interval between Control Packets
-                # being sent does not exceed the Keep Alive value. In the absence of sending any other Control
-                # Packets, the Client MUST send a PINGREQ Packet [MQTT-3.1.2-23].
-                $this->keepalive();
-
-                $this->handle_message();
-
-            } catch (Exception\NetworkError $e) {
-                Debug::Log(Debug::INFO, 'loop(): Connection lost.');
-                $this->reconnect();
-                $this->subscribe($this->topics);
-            } catch (\Exception $e) {
-                throw $e;
-            }
+        # Subscribe topics
+        if (!empty($this->topics_to_subscribe)) {
+            list($last_subscribe_msgid, $last_subscribe_topics) = $this->do_subscribe();
+            $this->subscribe_awaits[$last_subscribe_msgid] = $last_subscribe_topics;
+        }
+        # Unsubscribe topics
+        if (!empty($this->topics_to_unsubscribe)) {
+            list($last_unsubscribe_msgid, $last_unsubscribe_topics) = $this->do_unsubscribe();
+            $this->unsubscribe_awaits[$last_unsubscribe_msgid] = $last_unsubscribe_topics;
         }
 
-        return null;
+        $this->keepalive();
+        $this->handle_message();
+
+        return $this->publish_message;
     }
 
     protected $last_ping_time = 0;
