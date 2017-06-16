@@ -1161,35 +1161,50 @@ class MQTT
         return true;
     }
 
-    /**
-     * Waits for a message only the time selected in keepalive/2
-     * @return null|PUBLISH
-     * @throws Exception
-     * @throws \Exception
-     */
     public function waitForPublishMessage()
     {
-        # check if any commands awaits or topics to subscribe
-        if (!$this->cmdstore->countWaits() && empty($this->topics) && empty($this->topics_to_subscribe)) {
-            Debug::Log(Debug::INFO, "loop(): No tasks, leaving...");
-            return null;
+        $startLoopTime = time();
+
+        while ((time() - $startLoopTime) < $this->keepalive / 2) {
+            if (!is_null($this->publish_message)) {
+                return $this->publish_message;
+            }
+
+            # check if any commands awaits or topics to subscribe
+            if (!$this->cmdstore->countWaits() && empty($this->topics) && empty($this->topics_to_subscribe)) {
+                Debug::Log(Debug::INFO, "loop(): No tasks, leaving...");
+                break;
+            }
+
+            # Subscribe topics
+            if (!empty($this->topics_to_subscribe)) {
+                list($last_subscribe_msgid, $last_subscribe_topics) = $this->do_subscribe();
+                $this->subscribe_awaits[$last_subscribe_msgid] = $last_subscribe_topics;
+            }
+            # Unsubscribe topics
+            if (!empty($this->topics_to_unsubscribe)) {
+                list($last_unsubscribe_msgid, $last_unsubscribe_topics) = $this->do_unsubscribe();
+                $this->unsubscribe_awaits[$last_unsubscribe_msgid] = $last_unsubscribe_topics;
+            }
+
+            try {
+                # It is the responsibility of the Client to ensure that the interval between Control Packets
+                # being sent does not exceed the Keep Alive value. In the absence of sending any other Control
+                # Packets, the Client MUST send a PINGREQ Packet [MQTT-3.1.2-23].
+                $this->keepalive();
+
+                $this->handle_message();
+
+            } catch (Exception\NetworkError $e) {
+                Debug::Log(Debug::INFO, 'loop(): Connection lost.');
+                $this->reconnect();
+                $this->subscribe($this->topics);
+            } catch (\Exception $e) {
+                throw $e;
+            }
         }
 
-        # Subscribe topics
-        if (!empty($this->topics_to_subscribe)) {
-            list($last_subscribe_msgid, $last_subscribe_topics) = $this->do_subscribe();
-            $this->subscribe_awaits[$last_subscribe_msgid] = $last_subscribe_topics;
-        }
-        # Unsubscribe topics
-        if (!empty($this->topics_to_unsubscribe)) {
-            list($last_unsubscribe_msgid, $last_unsubscribe_topics) = $this->do_unsubscribe();
-            $this->unsubscribe_awaits[$last_unsubscribe_msgid] = $last_unsubscribe_topics;
-        }
-
-        $this->keepalive();
-        $this->handle_message();
-
-        return $this->publish_message;
+        return null;
     }
 
     protected $last_ping_time = 0;
